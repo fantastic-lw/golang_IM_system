@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"sync"
 )
@@ -26,9 +27,9 @@ func NewServer(ip string, port int) (server *Server) {
 }
 
 //启动服务器
-func (this *Server) Start() {
+func (server *Server) Start() {
 	//socket listen
-	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", this.Ip, this.Port))
+	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", server.Ip, server.Port))
 	if err != nil {
 		fmt.Println("Listener listen err:", err)
 		return
@@ -36,7 +37,7 @@ func (this *Server) Start() {
 	fmt.Println("服务器建立成功")
 	//close listen socket
 	defer listener.Close()
-	go this.ListenMessage()
+	go server.ListenMessage()
 	//accept
 	for {
 		conn, err := listener.Accept()
@@ -46,7 +47,7 @@ func (this *Server) Start() {
 		}
 		//转到处理go程进行逻辑处理
 
-		go this.Handle(conn)
+		go server.Handle(conn)
 	}
 	//do handle
 
@@ -54,33 +55,46 @@ func (this *Server) Start() {
 
 //监听Message并发送
 
-func (this *Server) ListenMessage() {
+func (server *Server) ListenMessage() {
 	for {
-		msg := <-this.Message
-		this.mapLock.Lock()
-		for _, cli := range this.OnlineMap {
+		msg := <-server.Message
+		server.mapLock.Lock()
+		for _, cli := range server.OnlineMap {
 			cli.C <- msg
 		}
-		this.mapLock.Unlock()
+		server.mapLock.Unlock()
 
 	}
 }
 
 //广播消息
-func (this *Server) Broadcast(user *User, msg string) {
+func (server *Server) Broadcast(user *User, msg string) {
 	sendMsg := fmt.Sprintf("[%s]%s:%s", user.Addr, user.Name, msg)
-	this.Message <- sendMsg
+	server.Message <- sendMsg
 
 }
-func (this *Server) Handle(conn net.Conn) {
+func (server *Server) Handle(conn net.Conn) {
 	fmt.Println("连接成功")
-	user := NewUser(conn)
-	//将用户加入OnlineMap中
-	this.mapLock.Lock()
-	this.OnlineMap[user.Name] = user
-	this.mapLock.Unlock()
-
+	user := NewUser(server, conn)
 	//广播用户已上线
-	this.Broadcast(user, "has online\n")
+	user.Online()
+	//接收用户的信息
+	go func() {
+		buf := make([]byte, 4096)
+		for {
+			n, err := conn.Read(buf)
+			if n == 0 {
+				user.Offline()
+				return
+			}
+			if err != nil && err != io.EOF {
+				fmt.Println("Conn read err:", err)
+				return
+			}
+			//提取用户的消息
+			msg := string(buf)
+			user.DoMessage(msg)
+		}
+	}()
 
 }

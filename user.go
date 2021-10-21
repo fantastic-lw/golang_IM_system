@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"net"
+	"strings"
 )
 
 type User struct {
@@ -46,7 +48,34 @@ func (user *User) Offline() {
 }
 
 func (user *User) DoMessage(msg string) {
-	user.server.Broadcast(user, msg)
+	//查询处理
+	// fmt.Println(len(msg))
+	if msg == "who" {
+		OnlineUsers := user.getOnlineUsers()
+		OnlineUsersCnt := len(OnlineUsers)
+		var sendMsg string
+		if OnlineUsersCnt == 1 {
+			sendMsg = fmt.Sprintf("There is only 1 user online:%s", OnlineUsers[0])
+		} else {
+
+			sendMsg = fmt.Sprintf("There are  %d users online:%s", OnlineUsersCnt, strings.Join(OnlineUsers, ","))
+		}
+		user.WriteToClient(sendMsg)
+	} else {
+		user.server.Broadcast(user, msg)
+	}
+
+}
+func (user *User) getOnlineUsers() (res []string) {
+	user.server.mapLock.Lock()
+	for name := range user.server.OnlineMap {
+		res = append(res, name)
+	}
+	user.server.mapLock.Unlock()
+	return
+}
+func (user *User) WriteToClient(msg string) {
+	user.conn.Write([]byte(msg + "\n\r"))
 }
 func (user *User) ListenMessage() {
 	for {

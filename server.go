@@ -92,7 +92,7 @@ func (server *Server) Handle(conn net.Conn) {
 				return
 			}
 			//提取用户的消息
-			msg := string(buf)
+			msg := string(buf[:n])
 			user.DoMessage(msg)
 		}
 	}()

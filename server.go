@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"time"
 )
 
 type Server struct {
@@ -78,6 +79,10 @@ func (server *Server) Handle(conn net.Conn) {
 	user := NewUser(server, conn)
 	//广播用户已上线
 	user.Online()
+
+	//监听用户是否活跃
+	isLive := make(chan bool)
+
 	//接收用户的信息
 	go func() {
 		buf := make([]byte, 4096)
@@ -91,10 +96,24 @@ func (server *Server) Handle(conn net.Conn) {
 				fmt.Println("Conn read err:", err)
 				return
 			}
+			//更新状态
+			isLive <- true
 			//提取用户的消息
 			msg := string(buf[:n])
 			user.DoMessage(msg)
+
 		}
 	}()
-
+	//设置定时器
+	for {
+		select {
+		case <-isLive:
+			//无作为
+		case <-time.After(time.Second * 100):
+			user.SendMsg("Timeout\n,you have been kicked out!")
+			close(user.C)
+			conn.Close()
+			return
+		}
+	}
 }

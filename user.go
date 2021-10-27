@@ -80,7 +80,7 @@ func (user *User) DoMessage(msg string) {
 	} else if len(msg) > 7 && msg[0:7] == "rename " {
 		newName := strings.Split(msg, " ")[1]
 		user.Rename(newName)
-	} else if len(msg) > 7 && msg[0:5] == "chart" {
+	} else if len(msg) > 5 && msg[0:5] == "chart" {
 		args := strings.Split(msg, " ")
 		if len(args) == 3 {
 			targetName := args[1]

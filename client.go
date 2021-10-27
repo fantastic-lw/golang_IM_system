@@ -98,22 +98,68 @@ func (client *Client) Run() {
 	}
 }
 
-func (client *Client) GroupChart() {
-
+func (client *Client) GroupChart() bool {
+	fmt.Println("Group Chart model,input exit to break")
+	var sendMsg string
+	for {
+		fmt.Scanln(&sendMsg)
+		if sendMsg == "exit" {
+			return true
+		}
+		_, err := client.conn.Write([]byte(sendMsg))
+		if err != nil {
+			fmt.Println("client.conn err")
+			return false
+		}
+	}
+	return true
 }
-func (client *Client) PrivateChart() {
+func (client *Client) PrivateChart() bool {
+	fmt.Println("Private Chart model,input exit to break")
+	var sendMsg string
+	var targetName string
+	instru := "chart "
 
-}
-func (client *Client) updateName() bool {
-	fmt.Println("input your new name!")
-	newName := ""
-	instru := "rename "
-	fmt.Scanln(&newName)
-	sendMsg := instru + newName
-	_, err := client.conn.Write([]byte(sendMsg))
+	fmt.Scanln(&targetName)
+	if targetName == "exit" {
+		return true
+	}
+	_, err := client.conn.Write([]byte(instru + targetName))
 	if err != nil {
 		fmt.Println("client.conn err")
 		return false
 	}
+	for {
+		fmt.Scanln(&sendMsg)
+		_, err := client.conn.Write([]byte(sendMsg))
+		if err != nil {
+			fmt.Println("client.conn err")
+			return false
+		}
+		if sendMsg == "break" {
+			return true
+		}
+	}
+
+	return true
+}
+func (client *Client) updateName() bool {
+	fmt.Println("input your new name!,input exit to break")
+	newName := ""
+	instru := "rename "
+
+	for {
+		fmt.Scanln(&newName)
+		if newName == "exit" {
+			return true
+		}
+		sendMsg := instru + newName
+		_, err := client.conn.Write([]byte(sendMsg))
+		if err != nil {
+			fmt.Println("client.conn err")
+			return false
+		}
+	}
+
 	return true
 }
